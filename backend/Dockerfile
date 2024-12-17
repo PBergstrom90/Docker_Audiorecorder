@@ -27,4 +27,4 @@ COPY --from=builder /app/package.json ./package.json
 EXPOSE 5000
 
 # Step 9: Start the backend server
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/server.js"]

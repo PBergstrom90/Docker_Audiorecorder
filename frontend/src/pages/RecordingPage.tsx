@@ -14,12 +14,19 @@ const RecordingPage: React.FC = () => {
     setWebSocket(ws);
 
     ws.onopen = () => {
-      console.log('WebSocket connected to ESP32');
+      ws.send('TYPE:FRONTEND'); // Send identification message
+      console.log('WebSocket connected.');
     };
 
     ws.onmessage = (event) => {
+      const message = event.data;
       console.log('WebSocket message received:', event.data);
+      if (message.startsWith('ACK:')) {
+        console.log('Server acknowledged connection.');
+        console.log(`ACK Message: ${message}`);
+      }
       if (event.data === 'END') {
+        console.log('Recording finished successfully.');
         handleSnackbarOpen('Recording finished successfully!');
       }
     };
@@ -30,7 +37,7 @@ const RecordingPage: React.FC = () => {
     };
 
     ws.onclose = () => {
-      console.log('WebSocket disconnected');
+      console.log('WebSocket disconnected.');
     };
 
     return () => {
