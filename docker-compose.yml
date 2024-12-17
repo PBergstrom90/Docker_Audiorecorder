@@ -26,7 +26,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "5000:5000"
+      - "5000:5000" # REST API
+      - "5001:5001" # WebSocket
     volumes:
       - ./backend/public/audio-storage:/app/public/audio-storage
     container_name: audiorecorder-backend

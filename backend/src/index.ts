@@ -3,17 +3,21 @@ import path from 'path';
 import multer from 'multer';
 import fs from 'fs';
 import crypto from 'crypto'; // Import crypto for nonce generation
+import cors from 'cors';
+import { WebSocketServer, WebSocket, Data } from 'ws';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const wss = new WebSocketServer({ port: 5001 });
 
-// Enable CORS for frontend access
+// CORS Configuration
 const corsOptions = {
-  origin: 'http://localhost', // Update this if using a different frontend URL
-  methods: ['GET', 'POST'],
-  optionsSuccessStatus: 200,
+  origin: 'http://localhost:3000', // React frontend origin
+  methods: ['GET', 'POST', 'OPTIONS'], // Allowed methods
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true, // Allow credentials (cookies, authorization headers, etc.)
 };
-app.use(require('cors')(corsOptions));
+app.use(cors(corsOptions)); // Apply CORS middleware globally
 
 // Serve the frontend
 app.use(express.static(path.join(__dirname, '../frontend/build')));
@@ -89,11 +93,127 @@ app.delete('/api/audio-files/:filename', (req, res) => {
   }
 });
 
+// WebSocket setup
+wss.on('connection', (ws: WebSocket) => {
+  console.log('ESP32 connected via WebSocket');
+
+  let tempStream: fs.WriteStream | null = null;
+  let tempPath: string;
+
+  ws.on('message', (data: Data, isBinary: boolean) => {
+    if (isBinary) {
+      // Dynamically create a new temp file when binary data starts arriving
+      if (!tempStream) {
+        tempPath = path.join(audioStoragePath, `temp_${Date.now()}.raw`);
+        tempStream = fs.createWriteStream(tempPath);
+        console.log(`Started new recording: ${tempPath}`);
+      }
+
+      console.log(`Received binary data of size: ${(data as ArrayBuffer).byteLength} bytes`);
+      tempStream.write(data);
+    } else {
+      const message = data.toString();
+      console.log(`Received message: ${message}`);
+
+      if (message === 'END') {
+        if (tempStream) {
+          console.log('END signal received. Finalizing raw file...');
+          tempStream.end();
+
+          tempStream.on('finish', () => {
+            console.log(`Raw file successfully closed: ${tempPath}`);
+            finalizeWavFile(tempPath);
+            tempStream = null; // Reset for the next recording session
+            broadcastToClients('END');
+          });
+        } else {
+          console.error('No active recording to finalize.');
+        }
+      }
+    }
+  });
+
+  ws.on('close', () => {
+    console.log('WebSocket connection closed');
+    // Ensure cleanup in case the connection closes unexpectedly
+    if (tempStream) {
+      tempStream.end();
+      tempStream = null;
+    }
+  });
+});
+
+// Notify the frontend client when recording is finished
+function broadcastToClients(message: string) {
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+    }
+  });
+}
+
+
+function finalizeWavFile(tempPath: string) {
+  try {
+    const dataSize = fs.statSync(tempPath).size;
+    const wavPath = path.join(audioStoragePath, `recorded_${Date.now()}.wav`);
+
+    const header = createWavHeader({
+      dataSize,
+      sampleRate: 16000,
+      channels: 1,
+      bitsPerSample: 16,
+    });
+
+    const wavFileStream = fs.createWriteStream(wavPath);
+    wavFileStream.write(header);
+
+    const rawData = fs.readFileSync(tempPath);
+    wavFileStream.write(rawData);
+    wavFileStream.end();
+
+    fs.unlinkSync(tempPath);
+    console.log(`WAV file created: ${wavPath}`);
+  } catch (error) {
+    console.error('Error processing WAV file:', error);
+  }
+}
+
+interface WavHeaderParams {
+  dataSize: number;
+  sampleRate: number;
+  channels: number;
+  bitsPerSample: number;
+}
+
+function createWavHeader({ dataSize, sampleRate, channels, bitsPerSample }: WavHeaderParams): Buffer {
+  const header = Buffer.alloc(44);
+  const byteRate = (sampleRate * channels * bitsPerSample) / 8;
+  const blockAlign = (channels * bitsPerSample) / 8;
+
+  header.write('RIFF', 0);
+  header.writeUInt32LE(36 + dataSize, 4);
+  header.write('WAVE', 8);
+  header.write('fmt ', 12);
+  header.writeUInt32LE(16, 16); // Subchunk1Size
+  header.writeUInt16LE(1, 20);  // PCM format
+  header.writeUInt16LE(channels, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(byteRate, 28);
+  header.writeUInt16LE(blockAlign, 32);
+  header.writeUInt16LE(bitsPerSample, 34);
+  header.write('data', 36);
+  header.writeUInt32LE(dataSize, 40);
+
+  return header;
+}
+
 // API: Health check
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'healthy' });
 });
 
+// Catch-all route for frontend
 app.get('/*', (req, res) => {
   const nonce = crypto.randomBytes(16).toString('base64');
   fs.readFile(path.join(__dirname, '../frontend/build/index.html'), 'utf8', (err, data) => {
