@@ -26,6 +26,10 @@ const RecordingPage: React.FC = () => {
       const message = event.data;
       console.log('WebSocket message received:', message);
 
+      if (event.data === 'START') {
+        console.log('Recording started successfully.');
+        handleSnackbarOpen('Recording started successfully!');
+      }
       if (event.data === 'END') {
         console.log('Recording finished successfully.');
         setIsRecording(false); // Enable the Start Recording button
@@ -55,7 +59,7 @@ const RecordingPage: React.FC = () => {
       if (!response.ok) throw new Error('Failed to start recording');
       const data = await response.json();
       console.log('Success:', data);
-      handleSnackbarOpen('Recording started successfully!');
+      handleSnackbarOpen('Manual recording started successfully!');
     } catch (error) {
       console.error('Error starting recording:', error);
       setIsRecording(false); // Re-enable the button if the request fails

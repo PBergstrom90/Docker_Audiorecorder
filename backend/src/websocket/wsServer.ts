@@ -38,7 +38,10 @@ export const setupWebSocketServer = (): void => {
         }
         console.log(`Received binary data of size: ${(data as ArrayBuffer).byteLength} bytes from: ${clientType}`);
         tempStream.write(data);
-      } else if (message === 'END' && tempStream) {
+      } else if (message === 'START' && tempStream) { // Handle START message
+        console.log('START signal received. Recording started on ESP32.');
+        broadcastToClients('START');
+      }  else if (message === 'END' && tempStream) { // Handle END message
         console.log('END signal received. Finalizing raw file...');
         tempStream.end();
         finalizeWavFile(tempPath);
