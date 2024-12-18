@@ -5,7 +5,7 @@ import MicIcon from '@mui/icons-material/Mic';
 const RecordingPage: React.FC = () => {
   const [gain, setGain] = useState<number>(0.3);
   const [isAutomatic, setIsAutomatic] = useState<boolean>(false);
-  const [isRecording, setIsRecording] = useState<boolean>(false); // Track recording status
+  const [isRecording, setIsRecording] = useState<boolean>(false);
   const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string>('');
   const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
