@@ -12,6 +12,7 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json()); // Parse JSON request bodies (if needed)
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded request bodies
 

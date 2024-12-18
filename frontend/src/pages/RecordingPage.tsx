@@ -9,10 +9,12 @@ const RecordingPage: React.FC = () => {
   const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string>('');
   const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
+  const backendHost = '192.168.50.30';
+  const esp32Ip = '192.168.50.136';
 
   useEffect(() => {
     // Connect to the WebSocket server
-    const ws = new WebSocket('ws://192.168.50.30:5001');
+    const ws = new WebSocket(`ws://${backendHost}:5001`);
     setWebSocket(ws);
 
     ws.onopen = () => {
@@ -49,7 +51,7 @@ const RecordingPage: React.FC = () => {
     console.log('Starting recording...');
     setIsRecording(true); // Disable the Start Recording button
     try {
-      const response = await fetch('http://192.168.50.136/start-record', { method: 'GET' });
+      const response = await fetch(`http://${esp32Ip}/start-record`, { method: 'GET' });
       if (!response.ok) throw new Error('Failed to start recording');
       const data = await response.json();
       console.log('Success:', data);
@@ -66,7 +68,7 @@ const RecordingPage: React.FC = () => {
     setGain(newGain);
     console.log(`Updating gain to: ${newGain}`);
     try {
-      const response = await fetch(`http://192.168.50.136/set-gain?value=${newGain}`, { method: 'GET' });
+      const response = await fetch(`http://${esp32Ip}/set-gain?value=${newGain}`, { method: 'GET' });
       if (!response.ok) throw new Error('Failed to update gain');
       const data = await response.json();
       console.log('Gain updated:', data);
@@ -79,18 +81,17 @@ const RecordingPage: React.FC = () => {
   const handleModeChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const mode = event.target.checked ? 'automatic' : 'manual';
     setIsAutomatic(event.target.checked);
-    console.log(`Switching to ${mode} mode...`);
     try {
-      const response = await fetch(`http://192.168.50.136/toggle-mode?mode=${mode}`, { method: 'GET' });
-      if (!response.ok) throw new Error(`Failed to switch to ${mode} mode`);
-      const data = await response.json();
-      console.log('Mode switched:', data);
-      handleSnackbarOpen(`Switched to ${mode.charAt(0).toUpperCase() + mode.slice(1)} mode!`);
+        const response = await fetch(`http://${esp32Ip}/toggle-mode?mode=${mode}`, { method: 'GET' });
+        if (!response.ok) throw new Error('Failed to toggle mode');
+        const data = await response.json();
+        console.log('Mode toggled:', data);
+        handleSnackbarOpen(`Switched to ${mode.charAt(0).toUpperCase() + mode.slice(1)} mode!`);
     } catch (error) {
-      console.error(`Error switching to ${mode} mode:`, error);
-      handleSnackbarOpen('Failed to switch modes!');
+        console.error('Error toggling mode:', error);
+        handleSnackbarOpen('Failed to toggle mode!');
     }
-  };
+};
 
   const handleSnackbarOpen = (message: string) => {
     setSnackbarMessage(message);

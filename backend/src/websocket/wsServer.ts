@@ -55,7 +55,7 @@ export const setupWebSocketServer = (): void => {
 };
 
 // Notify the frontend client when recording is finished
-function broadcastToClients(message: string) {
+export function broadcastToClients(message: string) {
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message);

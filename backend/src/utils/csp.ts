@@ -1,6 +1,5 @@
 import crypto from 'crypto';
 import fs from 'fs';
-import path from 'path';
 import { Request, Response } from 'express';
 
 // Function to generate a random nonce
@@ -29,8 +28,8 @@ export const serveWithCSP = (req: Request, res: Response, buildPath: string): vo
        style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com;
        font-src 'self' https://fonts.gstatic.com;
        script-src 'self' 'nonce-${nonce}';
-       connect-src 'self' http://localhost:5000;
-       media-src 'self' http://localhost:5000;`
+       connect-src 'self' http://localhost:5000 http://192.168.50.30:5000;
+       media-src 'self' http://localhost:5000 http://192.168.50.30:5000;`
     );
 
     res.send(result);
