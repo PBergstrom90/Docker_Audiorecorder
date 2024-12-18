@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Container, Button, Slider, Snackbar, Alert } from '@mui/material';
+import { Box, Typography, Container, Button, Slider, Snackbar, Alert, Switch, FormControlLabel } from '@mui/material';
 import MicIcon from '@mui/icons-material/Mic';
 
 const RecordingPage: React.FC = () => {
   const [gain, setGain] = useState<number>(0.3);
+  const [isAutomatic, setIsAutomatic] = useState<boolean>(false);
+  const [isRecording, setIsRecording] = useState<boolean>(false); // Track recording status
   const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string>('');
   const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
 
   useEffect(() => {
-    // Connect to the existing ESP32 WebSocket server
-    const ws = new WebSocket('ws://192.168.50.30:5001'); // Adjust to your ESP32 WebSocket IP and port
+    // Connect to the WebSocket server
+    const ws = new WebSocket('ws://192.168.50.30:5001');
     setWebSocket(ws);
 
     ws.onopen = () => {
@@ -20,13 +22,11 @@ const RecordingPage: React.FC = () => {
 
     ws.onmessage = (event) => {
       const message = event.data;
-      console.log('WebSocket message received:', event.data);
-      if (message.startsWith('ACK:')) {
-        console.log('Server acknowledged connection.');
-        console.log(`ACK Message: ${message}`);
-      }
+      console.log('WebSocket message received:', message);
+
       if (event.data === 'END') {
         console.log('Recording finished successfully.');
+        setIsRecording(false); // Enable the Start Recording button
         handleSnackbarOpen('Recording finished successfully!');
       }
     };
@@ -47,6 +47,7 @@ const RecordingPage: React.FC = () => {
 
   const handleStartRecording = async () => {
     console.log('Starting recording...');
+    setIsRecording(true); // Disable the Start Recording button
     try {
       const response = await fetch('http://192.168.50.136/start-record', { method: 'GET' });
       if (!response.ok) throw new Error('Failed to start recording');
@@ -55,6 +56,7 @@ const RecordingPage: React.FC = () => {
       handleSnackbarOpen('Recording started successfully!');
     } catch (error) {
       console.error('Error starting recording:', error);
+      setIsRecording(false); // Re-enable the button if the request fails
       handleSnackbarOpen('Failed to start recording!');
     }
   };
@@ -71,6 +73,22 @@ const RecordingPage: React.FC = () => {
     } catch (error) {
       console.error('Error updating gain:', error);
       handleSnackbarOpen('Failed to update gain!');
+    }
+  };
+
+  const handleModeChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const mode = event.target.checked ? 'automatic' : 'manual';
+    setIsAutomatic(event.target.checked);
+    console.log(`Switching to ${mode} mode...`);
+    try {
+      const response = await fetch(`http://192.168.50.136/toggle-mode?mode=${mode}`, { method: 'GET' });
+      if (!response.ok) throw new Error(`Failed to switch to ${mode} mode`);
+      const data = await response.json();
+      console.log('Mode switched:', data);
+      handleSnackbarOpen(`Switched to ${mode.charAt(0).toUpperCase() + mode.slice(1)} mode!`);
+    } catch (error) {
+      console.error(`Error switching to ${mode} mode:`, error);
+      handleSnackbarOpen('Failed to switch modes!');
     }
   };
 
@@ -93,6 +111,21 @@ const RecordingPage: React.FC = () => {
           Use the buttons below to start recording and adjust gain as needed.
         </Typography>
 
+        {/* Automatic/Manual Mode Toggle */}
+        <Box sx={{ marginBottom: 4 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={isAutomatic}
+                onChange={handleModeChange}
+                name="mode-switch"
+                color="primary"
+              />
+            }
+            label={isAutomatic ? 'Automatic Mode' : 'Manual Mode'}
+          />
+        </Box>
+
         {/* Start Recording Button */}
         <Box sx={{ marginBottom: 4 }}>
           <Button
@@ -100,6 +133,7 @@ const RecordingPage: React.FC = () => {
             color="primary"
             startIcon={<MicIcon />}
             onClick={handleStartRecording}
+            disabled={isAutomatic || isRecording}
           >
             Start Recording
           </Button>
@@ -116,6 +150,7 @@ const RecordingPage: React.FC = () => {
             max={1}
             step={0.01}
             onChange={handleGainChange}
+            disabled={isAutomatic || isRecording}
             aria-labelledby="gain-slider"
           />
           <Typography variant="body2">
