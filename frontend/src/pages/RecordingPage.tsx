@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { debounce } from 'lodash';
 import { Box, Typography, Container, Button, Slider, Snackbar, Alert, Switch, FormControlLabel } from '@mui/material';
 import MicIcon from '@mui/icons-material/Mic';
 
@@ -8,34 +9,74 @@ const RecordingPage: React.FC = () => {
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string>('');
+  const [pendingMode, setPendingMode] = useState<string | null>(null);
   const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
   const backendHost = '192.168.50.30';
   const esp32Ip = '192.168.50.136';
 
   useEffect(() => {
+    const fetchCurrentMode = async () => {
+      try {
+        const response = await fetch(`http://${backendHost}/api/current-mode`, {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (!response.ok) throw new Error('Failed to fetch current mode');
+        const data = await response.json();
+        console.log('Fetched current mode:', data.mode);
+        setIsAutomatic(data.mode === 'automatic');
+        setPendingMode(null);
+      } catch (error) {
+        console.error('Error fetching current mode:', error);
+        handleSnackbarOpen('Failed to fetch current mode!');
+      }
+    };
+    fetchCurrentMode();
+    
     // Connect to the WebSocket server
     const ws = new WebSocket(`ws://${backendHost}:5001`);
     setWebSocket(ws);
 
     ws.onopen = () => {
-      ws.send('TYPE:FRONTEND'); // Send identification message
+      ws.send('TYPE:FRONTEND');
       console.log('WebSocket connected.');
     };
 
     ws.onmessage = (event) => {
       const message = event.data;
       console.log('WebSocket message received:', message);
-
-      if (event.data === 'START') {
-        console.log('Recording started successfully.');
-        handleSnackbarOpen('Recording started successfully!');
-      }
-      if (event.data === 'END') {
-        console.log('Recording finished successfully.');
-        setIsRecording(false); // Enable the Start Recording button
-        handleSnackbarOpen('Recording finished successfully!');
+    
+      if (message === 'START') {
+        if (isRecording) {
+          console.warn('START message received, but recording is already active.');
+        } else {
+          console.log('Recording started successfully.');
+          setIsRecording(true);
+          handleSnackbarOpen('Recording started successfully!');
+        }
+      } else if (message === 'END') {
+        if (!isRecording) {
+          console.warn('END message received, but recording was not active.');
+        } else {
+          console.log('Recording finished successfully.');
+          setIsRecording(false);
+          handleSnackbarOpen('Recording finished successfully!');
+        }
+      } else if (message.startsWith('MODE:')) {
+        const newMode = message.split(':')[1].trim();
+        setIsAutomatic(newMode === 'automatic');
+        if (pendingMode === newMode) {
+          setPendingMode(null);
+          handleSnackbarOpen(`Mode updated to ${newMode}.`);
+        } else {
+          console.warn(`Unexpected mode confirmation: ${newMode}`);
+          setPendingMode(null);
+        }
+      } else {
+        console.warn('Unknown WebSocket message received:', message);
       }
     };
+    
 
     ws.onerror = (error) => {
       console.error('WebSocket error:', error);
@@ -67,7 +108,7 @@ const RecordingPage: React.FC = () => {
     }
   };
 
-  const handleGainChange = async (event: Event, newValue: number | number[]) => {
+  const handleGainChange = debounce(async (event: Event, newValue: number | number[]) => {
     const newGain = newValue as number;
     setGain(newGain);
     console.log(`Updating gain to: ${newGain}`);
@@ -80,23 +121,23 @@ const RecordingPage: React.FC = () => {
       console.error('Error updating gain:', error);
       handleSnackbarOpen('Failed to update gain!');
     }
-  };
+  }, 100); // Wait for 100ms of inactivity before firing the function, to avoid spamming requests.
 
   const handleModeChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const mode = event.target.checked ? 'automatic' : 'manual';
-    setIsAutomatic(event.target.checked);
+    setPendingMode(mode);
     try {
-        const response = await fetch(`http://${esp32Ip}/toggle-mode?mode=${mode}`, { method: 'GET' });
-        if (!response.ok) throw new Error('Failed to toggle mode');
-        const data = await response.json();
-        console.log('Mode toggled:', data);
-        handleSnackbarOpen(`Switched to ${mode.charAt(0).toUpperCase() + mode.slice(1)} mode!`);
+      const response = await fetch(`http://${esp32Ip}/toggle-mode?mode=${mode}`, { method: 'GET' });
+      if (!response.ok) throw new Error('Failed to toggle mode');
+      console.log(`Mode toggle request sent for ${mode}.`);
+      handleSnackbarOpen(`Mode toggle request sent for ${mode}.`);
     } catch (error) {
-        console.error('Error toggling mode:', error);
-        handleSnackbarOpen('Failed to toggle mode!');
+      console.error('Error toggling mode:', error);
+      setPendingMode(null);
+      handleSnackbarOpen(`Failed to toggle mode: ${error.message}`);
     }
-};
-
+  };
+  
   const handleSnackbarOpen = (message: string) => {
     setSnackbarMessage(message);
     setSnackbarOpen(true);
@@ -121,13 +162,20 @@ const RecordingPage: React.FC = () => {
           <FormControlLabel
             control={
               <Switch
-                checked={isAutomatic}
-                onChange={handleModeChange}
-                name="mode-switch"
-                color="primary"
-              />
+              checked={isAutomatic}
+              onChange={handleModeChange}
+              name="mode-switch"
+              color="primary"
+              disabled={pendingMode !== null}
+            />
             }
-            label={isAutomatic ? 'Automatic Mode' : 'Manual Mode'}
+            label={
+              pendingMode
+                ? `Switching to ${pendingMode.charAt(0).toUpperCase() + pendingMode.slice(1)} mode...`
+                : isAutomatic
+                ? 'Automatic Mode'
+                : 'Manual Mode'
+            }
           />
         </Box>
 
@@ -138,7 +186,7 @@ const RecordingPage: React.FC = () => {
             color="primary"
             startIcon={<MicIcon />}
             onClick={handleStartRecording}
-            disabled={isAutomatic || isRecording}
+            disabled={isAutomatic || isRecording || pendingMode !== null}
           >
             Start Recording
           </Button>
@@ -155,7 +203,7 @@ const RecordingPage: React.FC = () => {
             max={1}
             step={0.01}
             onChange={handleGainChange}
-            disabled={isAutomatic || isRecording}
+            disabled={isAutomatic || isRecording || pendingMode !== null}
             aria-labelledby="gain-slider"
           />
           <Typography variant="body2">

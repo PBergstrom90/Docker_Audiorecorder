@@ -6,6 +6,7 @@ import { finalizeWavFile } from '../utils/audioFileUtils';
 const PING_INTERVAL = 60000; // 60 seconds
 const audioStoragePath = path.join(__dirname, '../../public/audio-storage');
 const wss = new WebSocketServer({ port: 5001 });
+export let currentMode: string = 'manual'; 
 
 export const setupWebSocketServer = (): void => {
   wss.on('connection', (ws: WebSocket, req) => {
@@ -27,6 +28,27 @@ export const setupWebSocketServer = (): void => {
       if (!clientType && message.startsWith('TYPE:')) {
         clientType = message.split(':')[1].trim();
         ws.send(`ACK: Connected as ${clientType}`);
+        return;
+      }
+
+      if (!isBinary && message.startsWith('MODE:')) {
+        const newMode = message.split(':')[1].trim();
+        if (newMode === 'automatic' || newMode === 'manual') {
+          currentMode = newMode;
+          console.log(`Mode updated to: ${currentMode}`);
+          broadcastToClients(`MODE:${currentMode}`);
+        } else {
+          console.error(`Invalid mode received: ${newMode}`);
+        }
+        return;
+      }
+
+      if (!isBinary && message.startsWith('ERROR:')) {
+        // Handle errors from ESP32
+        const errorMessage = message.split(':')[1].trim();
+        console.error(`ESP32 Error: ${errorMessage}`);
+        ws.send(`ERROR: ${errorMessage}`);
+        broadcastToClients(`ERROR: ${errorMessage}`);
         return;
       }
 
@@ -59,6 +81,7 @@ export const setupWebSocketServer = (): void => {
 
 // Notify the frontend client when recording is finished
 export function broadcastToClients(message: string) {
+  console.log(`Broadcasting message: ${message}`);
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(message);

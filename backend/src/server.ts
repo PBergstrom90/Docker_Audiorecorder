@@ -4,7 +4,7 @@ import cors from 'cors';
 import { audioRoutes } from './routes/audioRoutes';
 import { healthRoutes } from './routes/healthRoutes';
 import { serveWithCSP } from './utils/csp';
-import { setupWebSocketServer } from './websocket/wsServer';
+import { setupWebSocketServer, currentMode } from './websocket/wsServer';
 import { corsOptions } from './config/corsConfig';
 
 const app = express();
@@ -13,8 +13,8 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
-app.use(express.json()); // Parse JSON request bodies (if needed)
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded request bodies
+app.use(express.json()); 
+app.use(express.urlencoded({ extended: true }));
 
 // Serve static audio files from /public/audio-storage
 app.use('/audio-storage', express.static(path.join(__dirname, '../public/audio-storage')));
@@ -22,6 +22,14 @@ app.use('/audio-storage', express.static(path.join(__dirname, '../public/audio-s
 // Routes
 app.use('/api', audioRoutes);
 app.use('/health', healthRoutes);
+
+app.get('/api/current-mode', cors(corsOptions), (req, res) => {
+  res.type('application/json');
+  console.log(`Returning current mode: ${currentMode}`);
+  res.json({ mode: currentMode });
+});
+
+app.options('/api/current-mode', cors(corsOptions));
 
 // Catch-all route for serving the frontend with CSP headers
 app.get('/*', (req, res) => {
