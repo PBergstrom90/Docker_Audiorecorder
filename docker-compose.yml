@@ -9,6 +9,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "80:80"
+      - "443:443"
     container_name: audiorecorder-frontend
     depends_on:
       - backend
@@ -20,6 +21,10 @@ services:
     restart: always
     networks:
       - default
+    volumes:
+      - ./certs/server.crt:/etc/nginx/certs/server.crt:ro
+      - ./certs/server.key:/etc/nginx/certs/server.key:ro
+      - ./certs/ca.crt:/etc/nginx/certs/ca.crt:ro
 
   backend:
     build:
@@ -39,5 +44,3 @@ services:
     restart: always
     networks:
       - default
-
-
