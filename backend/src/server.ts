@@ -4,7 +4,7 @@ import cors from 'cors';
 import { audioRoutes } from './routes/audioRoutes';
 import { healthRoutes } from './routes/healthRoutes';
 import { serveWithCSP } from './utils/csp';
-import { setupWebSocketServer, currentMode } from './websocket/wsServer';
+import { setupWebSocketServer, currentMode, isDeviceOnline } from './websocket/wsServer';
 import { corsOptions } from './config/corsConfig';
 
 const app = express();
@@ -23,15 +23,23 @@ app.use('/audio-storage', express.static(path.join(__dirname, '../public/audio-s
 app.use('/api', audioRoutes);
 app.use('/health', healthRoutes);
 
+// Current mode
 app.get('/api/current-mode', cors(corsOptions), (req, res) => {
   res.type('application/json');
   console.log(`Returning current mode: ${currentMode}`);
   res.json({ mode: currentMode });
 });
-
 app.options('/api/current-mode', cors(corsOptions));
 
-// Catch-all route for serving the frontend with CSP headers
+// ESP32 status
+app.get('/api/status', cors(corsOptions), (req, res) => {
+  res.type('application/json');
+  console.log(`Returning ESP32 status: ${isDeviceOnline}`);
+  res.json({ isOnline: isDeviceOnline });
+});
+app.options('/api/status', cors(corsOptions));
+
+// Serve frontend
 app.get('/*', (req, res) => {
   const buildPath = path.join(__dirname, '../frontend/build/index.html');
   serveWithCSP(req, res, buildPath);
