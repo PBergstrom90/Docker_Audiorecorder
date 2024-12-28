@@ -35,6 +35,9 @@ services:
       - "5001:5001" # WebSocket
     volumes:
       - ./backend/public/audio-storage:/app/public/audio-storage
+      - ./certs/server.crt:/etc/nginx/certs/server.crt:ro
+      - ./certs/server.key:/etc/nginx/certs/server.key:ro
+      - ./certs/ca.crt:/etc/nginx/certs/ca.crt:ro
     container_name: audiorecorder-backend
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]

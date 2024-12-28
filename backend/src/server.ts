@@ -1,6 +1,8 @@
 import express from 'express';
 import path from 'path';
 import cors from 'cors';
+import https from 'https';
+import fs from 'fs';
 import { audioRoutes } from './routes/audioRoutes';
 import { healthRoutes } from './routes/healthRoutes';
 import { serveWithCSP } from './utils/csp';
@@ -9,6 +11,11 @@ import { corsOptions } from './config/corsConfig';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const serverOptions = {
+  key: fs.readFileSync('/etc/nginx/certs/server.key'),
+  cert: fs.readFileSync('/etc/nginx/certs/server.crt'),
+};
+const httpsServer = https.createServer(serverOptions, app);
 
 // Middleware
 app.use(cors(corsOptions));
@@ -54,7 +61,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   res.status(500).json({ error: err.message });
 });
 
-// Start HTTP server
-app.listen(PORT, () => {
-  console.log(`Backend running on http://localhost:${PORT}`);
+// Start HTTPS server
+httpsServer.listen(PORT, () => {
+  console.log(`Backend running on https://localhost:${PORT}`);
 });

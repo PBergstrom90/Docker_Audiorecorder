@@ -1,4 +1,5 @@
 import { WebSocketServer, WebSocket, Data } from 'ws';
+import https from 'https';
 import fs from 'fs';
 import path from 'path';
 import { finalizeWavFile } from '../utils/audioFileUtils';
@@ -6,13 +7,24 @@ import { finalizeWavFile } from '../utils/audioFileUtils';
 const PING_INTERVAL = 20000; // 20 seconds
 const audioStoragePath = path.join(__dirname, '../../public/audio-storage');
 
+const serverOptions = {
+  key: fs.readFileSync('/etc/nginx/certs/server.key'), // Use your actual paths
+  cert: fs.readFileSync('/etc/nginx/certs/server.crt'),
+  ca: fs.readFileSync('/etc/nginx/certs/ca.crt'),
+};
+
 export let currentMode: string = 'manual';
 export let isDeviceOnline = false;
 let deviceSocket: WebSocket | null = null;
 
-const wss = new WebSocketServer({ port: 5001 });
+const httpsServer = https.createServer(serverOptions);
+const wss = new WebSocketServer({ server: httpsServer });
 
 export const setupWebSocketServer = (): void => {
+  httpsServer.listen(5001, () => {
+    console.log('WebSocket server running on wss://localhost:5001');
+  });
+  
   wss.on('connection', (ws: WebSocket, req) => {
     const clientIp = req.socket.remoteAddress || 'Unknown IP';
     console.log(`New WebSocket connection from: ${clientIp}`);

@@ -33,13 +33,11 @@ const RecordingPage: React.FC = () => {
   const [isOnline, setIsOnline] = useState<boolean>(false);
 
   const backendHost = '192.168.50.30';
-  const esp32Ip = '192.168.50.136';
 
   useEffect(() => {
-
     const fetchCurrentMode = async () => {
       try {
-        const response = await fetch(`http://${backendHost}/api/current-mode`);
+        const response = await fetch(`/api/current-mode`);
         if (!response.ok) throw new Error('Failed to fetch current mode');
         const data = await response.json();
         console.log('Fetched current mode:', data.mode);
@@ -54,7 +52,7 @@ const RecordingPage: React.FC = () => {
 
     const fetchDeviceStatus = async () => {
       try {
-        const response = await fetch(`http://${backendHost}/api/status`);
+        const response = await fetch(`/api/status`);
         if (!response.ok) throw new Error('Failed to fetch ESP32 status');
         const data = await response.json();
         setIsOnline(data.isOnline);
@@ -67,7 +65,7 @@ const RecordingPage: React.FC = () => {
     const intervalId = setInterval(fetchDeviceStatus, 10000);
 
     // Setup WebSocket
-    const ws = new WebSocket(`ws://${backendHost}:5001`);
+    const ws = new WebSocket(`wss://192.168.50.30/ws`);
     setWebSocket(ws);
 
     ws.onopen = () => {
@@ -144,7 +142,7 @@ const RecordingPage: React.FC = () => {
     console.log('Requesting device to start recording...');
     setIsRequestingStart(true);
     try {
-      const response = await fetch(`http://${esp32Ip}/start-record`, {
+      const response = await fetch(`/esp32/start-record`, {
         method: 'GET',
       });
       if (!response.ok) throw new Error('Failed to start recording');
@@ -166,7 +164,7 @@ const RecordingPage: React.FC = () => {
     setGain(newGain);
     console.log(`Updating gain to: ${newGain}`);
     try {
-      const response = await fetch(`http://${esp32Ip}/set-gain?value=${newGain}`, {
+      const response = await fetch(`/esp32/set-gain?value=${newGain}`, {
         method: 'GET',
       });
       if (!response.ok) throw new Error('Failed to update gain');
@@ -182,7 +180,7 @@ const RecordingPage: React.FC = () => {
     const mode = event.target.checked ? 'automatic' : 'manual';
     setPendingMode(mode);
     try {
-      const response = await fetch(`http://${esp32Ip}/toggle-mode?mode=${mode}`, {
+      const response = await fetch(`/esp32/toggle-mode?mode=${mode}`, {
         method: 'GET',
       });
       if (!response.ok) throw new Error('Failed to toggle mode');
@@ -260,8 +258,8 @@ const RecordingPage: React.FC = () => {
                 disabled={
                   !isOnline ||
                   isAutomatic ||
-                  isRecording || // if device is recording, can't start again
-                  isRequestingStart || // if we're waiting for a START confirm
+                  isRecording ||
+                  isRequestingStart ||
                   pendingMode !== null
                 }
               >
