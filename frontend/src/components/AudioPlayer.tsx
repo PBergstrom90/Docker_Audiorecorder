@@ -6,7 +6,7 @@ interface AudioPlayerProps {
 }
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ file }) => {
-  const audioUrl = `http://localhost:5000/audio-storage/${file}`;
+  const audioUrl = `https://localhost:5000/audio-storage/${file}`;
 
   return (
     <div>
@@ -14,8 +14,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ file }) => {
       <ReactAudioPlayer
         src={audioUrl}
         controls
-        preload="auto" // Ensure the audio file is preloaded
-        autoPlay={false} // Disable autoplay for better control
+        preload="auto"
+        autoPlay={false}
         onCanPlay={() => console.log(`Audio ready to play: ${file}`)}
         onError={(e) => console.error(`Failed to load audio: ${file}`, e)}
       />
