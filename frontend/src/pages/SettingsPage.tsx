@@ -18,14 +18,9 @@ interface SettingsPageProps {
 }
 
 const SettingsPage: React.FC<SettingsPageProps> = ({ themeMode, setThemeMode }) => {
-  const [notifications, setNotifications] = React.useState<boolean>(true);
 
   const handleThemeChange = (event: SelectChangeEvent<string>) => {
     setThemeMode(event.target.value as 'light' | 'dark');
-  };
-
-  const handleNotificationToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setNotifications(event.target.checked);
   };
 
   return (
@@ -35,7 +30,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ themeMode, setThemeMode }) 
           Settings
         </Typography>
         <FormControl fullWidth sx={{ marginBottom: 4 }}>
-          <InputLabel id="theme-select-label">Theme</InputLabel>
           <Select
             labelId="theme-select-label"
             value={themeMode}
@@ -45,16 +39,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ themeMode, setThemeMode }) 
             <MenuItem value="dark">Dark</MenuItem>
           </Select>
         </FormControl>
-        <FormControlLabel
-          control={
-            <Switch
-              checked={notifications}
-              onChange={handleNotificationToggle}
-              color="primary"
-            />
-          }
-          label="Enable Notifications"
-        />
       </Box>
     </Container>
   );

@@ -65,7 +65,7 @@ const RecordingPage: React.FC = () => {
     const intervalId = setInterval(fetchDeviceStatus, 10000);
 
     // Setup WebSocket
-    const ws = new WebSocket(`wss://192.168.50.30/ws`);
+    const ws = new WebSocket(`wss://192.168.50.30/ws/`);
     setWebSocket(ws);
 
     ws.onopen = () => {

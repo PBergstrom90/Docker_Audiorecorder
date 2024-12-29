@@ -8,7 +8,7 @@ const PING_INTERVAL = 20000; // 20 seconds
 const audioStoragePath = path.join(__dirname, '../../public/audio-storage');
 
 const serverOptions = {
-  key: fs.readFileSync('/etc/nginx/certs/server.key'), // Use your actual paths
+  key: fs.readFileSync('/etc/nginx/certs/server.key'),
   cert: fs.readFileSync('/etc/nginx/certs/server.crt'),
   ca: fs.readFileSync('/etc/nginx/certs/ca.crt'),
 };
