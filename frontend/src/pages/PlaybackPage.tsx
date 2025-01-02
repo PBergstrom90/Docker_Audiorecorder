@@ -6,14 +6,17 @@ import {
   MenuItem,
   Select,
   FormControl,
-  InputLabel,
-  Button, SelectChangeEvent,
+  Button,
+  SelectChangeEvent,
+  Grid,
+  Paper,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 const PlaybackPage: React.FC = () => {
   const [audioFiles, setAudioFiles] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [filesByDate, setFilesByDate] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     fetchAudioFiles();
@@ -27,8 +30,32 @@ const PlaybackPage: React.FC = () => {
         }
         return response.json();
       })
-      .then((data) => setAudioFiles(data))
+      .then((data) => {
+        setAudioFiles(data);
+        groupFilesByDate(data);
+      })
       .catch((error) => console.error('Error fetching audio files:', error));
+  };
+
+  const groupFilesByDate = (files: string[]) => {
+    const grouped = files.reduce<Record<string, string[]>>((acc, file) => {
+      const dateMatch = file.match(/\d{4}-\d{2}-\d{2}/);
+      const date = dateMatch ? dateMatch[0] : 'Unknown';
+      if (!acc[date]) {
+        acc[date] = [];
+      }
+      acc[date].push(file);
+      return acc;
+    }, {});
+
+    const sortedGrouped = Object.keys(grouped)
+      .sort()
+      .reduce<Record<string, string[]>>((sortedAcc, date) => {
+        sortedAcc[date] = grouped[date];
+        return sortedAcc;
+      }, {});
+
+    setFilesByDate(sortedGrouped);
   };
 
   const handleFileSelect = (event: SelectChangeEvent<string>) => {
@@ -56,10 +83,10 @@ const PlaybackPage: React.FC = () => {
         Audio Playback
       </Typography>
 
+    {/* Dropdown for Audiofiles */}
       {audioFiles.length > 0 ? (
         <>
           <FormControl fullWidth sx={{ marginBottom: 4 }}>
-            <InputLabel id="audio-file-dropdown-label"></InputLabel>
             <Select
               labelId="audio-file-dropdown-label"
               value={selectedFile || ''}
@@ -76,7 +103,6 @@ const PlaybackPage: React.FC = () => {
               ))}
             </Select>
           </FormControl>
-
           {selectedFile && (
             <Box sx={{ marginTop: 4 }}>
               <AudioPlayer file={selectedFile} />
@@ -91,6 +117,25 @@ const PlaybackPage: React.FC = () => {
               </Button>
             </Box>
           )}
+
+          {/* Summary over all recordings the bottom */}
+          <Box sx={{ marginTop: 8 }}>
+            <Typography variant="h6" gutterBottom>
+              Recordings Summary
+            </Typography>
+            <Grid container spacing={2}>
+              {Object.entries(filesByDate).map(([date, files]) => (
+                <Grid item xs={12} sm={6} md={4} key={date}>
+                  <Paper sx={{ padding: 2, textAlign: 'center' }}>
+                    <Typography variant="body1" fontWeight="bold">
+                      {date}
+                    </Typography>
+                    <Typography variant="body2">{files.length} recording(s)</Typography>
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
         </>
       ) : (
         <Typography variant="body1">No audio files available.</Typography>

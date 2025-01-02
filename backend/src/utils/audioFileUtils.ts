@@ -1,10 +1,29 @@
 import fs from 'fs';
 import path from 'path';
 
+function getFormattedDateTime(): string {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Europe/Stockholm',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+  const parts = formatter.formatToParts(now);
+  const date = `${parts.find((p) => p.type === 'year')?.value}-${parts.find((p) => p.type === 'month')?.value}-${parts.find((p) => p.type === 'day')?.value}`;
+  const time = `${parts.find((p) => p.type === 'hour')?.value}-${parts.find((p) => p.type === 'minute')?.value}-${parts.find((p) => p.type === 'second')?.value}`;
+
+  return `${date}_${time}`;
+}
+
 export const finalizeWavFile = (tempPath: string): void => {
   try {
     const dataSize = fs.statSync(tempPath).size;
-    const wavPath = path.join(path.dirname(tempPath), `recorded_${Date.now()}.wav`);
+    const formattedDate = getFormattedDateTime();
+    const wavPath = path.join(path.dirname(tempPath), `recorded_${formattedDate}.wav`);
 
     const header = createWavHeader({
       dataSize,

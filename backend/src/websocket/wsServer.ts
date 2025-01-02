@@ -4,7 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { finalizeWavFile } from '../utils/audioFileUtils';
 
-const PING_INTERVAL = 20000; // 20 seconds
+const PING_INTERVAL = 30000; // 30 seconds
 const audioStoragePath = path.join(__dirname, '../../public/audio-storage');
 
 const serverOptions = {
