@@ -32,7 +32,7 @@ const RecordingPage: React.FC = () => {
   const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
   const [isOnline, setIsOnline] = useState<boolean>(false);
 
-  const backendHost = '192.168.50.30';
+  const backendHost = '192.168.50.221';
 
   useEffect(() => {
     const fetchCurrentMode = async () => {
@@ -65,7 +65,7 @@ const RecordingPage: React.FC = () => {
     const intervalId = setInterval(fetchDeviceStatus, 10000);
 
     // Setup WebSocket
-    const ws = new WebSocket(`wss://192.168.50.30/ws/`);
+    const ws = new WebSocket(`wss://192.168.50.221/ws/`);
     setWebSocket(ws);
 
     ws.onopen = () => {

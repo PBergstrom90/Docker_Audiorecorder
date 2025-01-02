@@ -63,5 +63,5 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 // Start HTTPS server
 httpsServer.listen(PORT, () => {
-  console.log(`Backend running on https://localhost:${PORT}`);
+  console.log(`Backend running on https://192.168.50.221:${PORT}`);
 });

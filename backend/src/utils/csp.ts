@@ -28,8 +28,8 @@ export const serveWithCSP = (req: Request, res: Response, buildPath: string): vo
        style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com;
        font-src 'self' https://fonts.gstatic.com;
        script-src 'self' 'nonce-${nonce}';
-       connect-src 'self' https://localhost:5000 https://192.168.50.30:5000;
-       media-src 'self' https://localhost:5000 https://192.168.50.30:5000;`
+       connect-src 'self' https://localhost:5000 https://192.168.50.221:5000;
+       media-src 'self' https://localhost:5000 https://192.168.50.221:5000;`
     );
 
     res.send(result);

@@ -6,7 +6,7 @@ interface AudioPlayerProps {
 }
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ file }) => {
-  const audioUrl = `https://localhost:5000/audio-storage/${file}`;
+  const audioUrl = `https://192.168.50.221:5000/audio-storage/${file}`;
 
   return (
     <div>
