@@ -6,7 +6,7 @@ import fs from 'fs';
 import { audioRoutes } from './routes/audioRoutes';
 import { healthRoutes } from './routes/healthRoutes';
 import { serveWithCSP } from './utils/csp';
-import { setupWebSocketServer, currentMode, isDeviceOnline } from './websocket/wsServer';
+import { setupWebSocketServer, currentMode, isDeviceOnline, deviceSocket } from './websocket/wsServer';
 import { corsOptions } from './config/corsConfig';
 
 const app = express();
@@ -38,11 +38,12 @@ app.get('/api/current-mode', cors(corsOptions), (req, res) => {
 });
 app.options('/api/current-mode', cors(corsOptions));
 
-// ESP32 status
+// ESP32 status with timeout-based check
 app.get('/api/status', cors(corsOptions), (req, res) => {
+  const status = deviceSocket !== null && isDeviceOnline;
+  console.log(`Returning ESP32 status: ${status}`);
   res.type('application/json');
-  console.log(`Returning ESP32 status: ${isDeviceOnline}`);
-  res.json({ isOnline: isDeviceOnline });
+  res.json({ isOnline: status });
 });
 app.options('/api/status', cors(corsOptions));
 

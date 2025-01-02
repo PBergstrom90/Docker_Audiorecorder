@@ -15,7 +15,7 @@ const serverOptions = {
 
 export let currentMode: string = 'manual';
 export let isDeviceOnline = false;
-let deviceSocket: WebSocket | null = null;
+export let deviceSocket: WebSocket | null = null;
 
 const httpsServer = https.createServer(serverOptions);
 const wss = new WebSocketServer({ server: httpsServer });
@@ -37,22 +37,21 @@ export const setupWebSocketServer = (): void => {
     const resetPongTimeout = () => {
       if (pongTimeout) clearTimeout(pongTimeout);
       pongTimeout = setTimeout(() => {
-        console.log(`No pong received from ${clientType || 'Unknown client'}; marking as offline.`);
-        if (ws === deviceSocket) {
-          isDeviceOnline = false;
-          deviceSocket = null;
-          console.log('ESP32 is now OFFLINE');
-        }
-      }, PING_INTERVAL * 2); // Timeout set to twice the ping interval
-    };
+          if (ws === deviceSocket) {
+              console.log(`ESP32 pong timeout. Marking as offline.`);
+              isDeviceOnline = false;
+              deviceSocket = null;
+          }
+      }, PING_INTERVAL * 2); // Timeout is twice the ping interval
+  };
 
-    // Periodic pings to keep connection alive
-    const pingInterval = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) {
+  const pingInterval = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+        console.log(`Sending ping to ${clientType || 'Unknown client'}`);
         ws.ping();
         resetPongTimeout();
-      }
-    }, PING_INTERVAL);
+    }
+}, PING_INTERVAL);
 
     ws.on('message', (data: Data, isBinary: boolean) => {
       const message = data.toString();
@@ -142,10 +141,14 @@ export const setupWebSocketServer = (): void => {
     });
 
     ws.on('pong', () => {
-      console.log(`Pong received from clientType: ${clientType}, IP: ${clientIp}`);
-      if (ws === deviceSocket) isDeviceOnline = true;
-      resetPongTimeout();
-    });
+      if (ws === deviceSocket) {
+          console.log(`Pong received from ESP32, resetting timeout.`);
+          isDeviceOnline = true;
+          resetPongTimeout();
+      } else {
+          console.log(`Pong received from another client, ignoring.`);
+      }
+  });
 
     ws.on('close', () => {
       clearInterval(pingInterval);
