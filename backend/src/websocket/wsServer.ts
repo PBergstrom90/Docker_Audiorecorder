@@ -4,7 +4,8 @@ import fs from 'fs';
 import path from 'path';
 import { finalizeWavFile } from '../utils/audioFileUtils';
 
-const PING_INTERVAL = 30000; // 30 seconds
+const PING_INTERVAL = 20000; // 20 seconds
+const PONG_TIMEOUT = 30000; // 30 seconds
 const audioStoragePath = path.join(__dirname, '../../public/audio-storage');
 
 const serverOptions = {
@@ -16,6 +17,7 @@ const serverOptions = {
 export let currentMode: string = 'manual';
 export let isDeviceOnline = false;
 export let deviceSocket: WebSocket | null = null;
+let lastPongTimestamp: number | null = null;
 
 const httpsServer = https.createServer(serverOptions);
 const wss = new WebSocketServer({ server: httpsServer });
@@ -34,24 +36,24 @@ export const setupWebSocketServer = (): void => {
     let tempPath: string = '';
     let pongTimeout: NodeJS.Timeout | null = null;
 
-    const resetPongTimeout = () => {
-      if (pongTimeout) clearTimeout(pongTimeout);
-      pongTimeout = setTimeout(() => {
-          if (ws === deviceSocket) {
-              console.log(`ESP32 pong timeout. Marking as offline.`);
-              isDeviceOnline = false;
-              deviceSocket = null;
-          }
-      }, PING_INTERVAL * 2); // Timeout is twice the ping interval
-  };
+    const checkPongTimeout = setInterval(() => {
+      if (deviceSocket === ws && lastPongTimestamp !== null) {
+        const now = Date.now();
+        if (now - lastPongTimestamp > PONG_TIMEOUT) {
+          console.log('Pong timeout exceeded for ESP32. Marking as offline.');
+          isDeviceOnline = false;
+          deviceSocket = null;
+          lastPongTimestamp = null;
+        }
+      }
+    }, PONG_TIMEOUT); // Check at half the timeout interval
 
-  const pingInterval = setInterval(() => {
-    if (ws.readyState === WebSocket.OPEN) {
-        console.log(`Sending ping to ${clientType || 'Unknown client'}`);
+    const pingInterval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
         ws.ping();
-        resetPongTimeout();
-    }
-}, PING_INTERVAL);
+        console.log(`Sending ping to ${clientType || 'Unknown client'}`);
+      }
+    }, PING_INTERVAL);
 
     ws.on('message', (data: Data, isBinary: boolean) => {
       const message = data.toString();
@@ -65,6 +67,7 @@ export const setupWebSocketServer = (): void => {
         if (clientType === 'ESP32') {
           isDeviceOnline = true;
           deviceSocket = ws;
+          lastPongTimestamp = Date.now();
           console.log('ESP32 is now ONLINE');
         } else if (clientType === 'FRONTEND') {
           console.log('Frontend client connected.');
@@ -142,16 +145,14 @@ export const setupWebSocketServer = (): void => {
 
     ws.on('pong', () => {
       if (ws === deviceSocket) {
-          console.log(`Pong received from ESP32, resetting timeout.`);
-          isDeviceOnline = true;
-          resetPongTimeout();
-      } else {
-          console.log(`Pong received from another client, ignoring.`);
+        lastPongTimestamp = Date.now();
+        console.log(`Pong received from ESP32. Timestamp updated.`);
       }
   });
 
     ws.on('close', () => {
       clearInterval(pingInterval);
+      clearInterval(checkPongTimeout);
       console.log('WebSocket connection closed.');
       // If this was the ESP32's socket, mark as offline
       if (ws === deviceSocket) {
