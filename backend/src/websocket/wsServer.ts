@@ -32,11 +32,25 @@ export const setupWebSocketServer = (): void => {
     let clientType: string | null = null;
     let tempStream: fs.WriteStream | null = null;
     let tempPath: string = '';
+    let pongTimeout: NodeJS.Timeout | null = null;
+
+    const resetPongTimeout = () => {
+      if (pongTimeout) clearTimeout(pongTimeout);
+      pongTimeout = setTimeout(() => {
+        console.log(`No pong received from ${clientType || 'Unknown client'}; marking as offline.`);
+        if (ws === deviceSocket) {
+          isDeviceOnline = false;
+          deviceSocket = null;
+          console.log('ESP32 is now OFFLINE');
+        }
+      }, PING_INTERVAL * 2); // Timeout set to twice the ping interval
+    };
 
     // Periodic pings to keep connection alive
     const pingInterval = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) {
-        ws.ping(); // The server will emit 'pong' events when the client responds
+        ws.ping();
+        resetPongTimeout();
       }
     }, PING_INTERVAL);
 
@@ -129,6 +143,8 @@ export const setupWebSocketServer = (): void => {
 
     ws.on('pong', () => {
       console.log(`Pong received from clientType: ${clientType}, IP: ${clientIp}`);
+      if (ws === deviceSocket) isDeviceOnline = true;
+      resetPongTimeout();
     });
 
     ws.on('close', () => {
