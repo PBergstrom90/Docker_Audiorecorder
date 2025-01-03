@@ -2,6 +2,8 @@
 
 A full-stack audio recording application running in Docker containers. The project includes a backend (Node.js) for handling API requests, WebSocket communication, and audio file storage, and a frontend (React) for user interaction. The system enables secure audio streaming, recording management, and playback.
 
+This project is designed to work seamlessly with the ESP32 Audiorecorder, which can be found in this repository: [ESP32_Audiorecorder](https://github.com/PBergstrom90/ESP32_Audiorecorder).
+
 ## Features
 
 ### Backend
